@@ -1,0 +1,2 @@
+red=org.apache.dubbo.common.extension.demo.test.commonExtension.wrapperExtension.RedCar
+kk=org.apache.dubbo.common.extension.demo.test.commonExtension.wrapperExtension.WrapperCar

@@ -1,0 +1,2 @@
+red=org.apache.dubbo.common.extension.demo.test.commonExtension.activateExtension.RedCar
+black=org.apache.dubbo.common.extension.demo.test.commonExtension.activateExtension.BlackCar

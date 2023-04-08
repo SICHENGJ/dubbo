@@ -1,0 +1,2 @@
+amap=org.apache.dubbo.common.extension.demo.test.commonExtension.getIocExtension.AmapNavigation
+google=org.apache.dubbo.common.extension.demo.test.commonExtension.getIocExtension.GoogleNavigation
