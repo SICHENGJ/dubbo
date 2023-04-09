@@ -19,7 +19,9 @@ public class Test {
     }
 }
 
-
+/**
+ * 生成了navigation的代理
+ */
 //package org.apache.dubbo.common.extension.demo.test.commonExtension.getIocExtension;
 //import org.apache.dubbo.common.extension.ExtensionLoader;
 //public class Navigation$Adaptive implements org.apache.dubbo.common.extension.demo.test.commonExtension.getIocExtension.Navigation {

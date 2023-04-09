@@ -96,8 +96,10 @@ public class ExtensionLoader<T> {
 
     private final ExtensionFactory objectFactory;
 
+    //缓存扩展点名字
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<>();
 
+    //从扩展点缓存中拿类
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
 
     private final Map<String, Object> cachedActivates = new ConcurrentHashMap<>();
@@ -175,7 +177,7 @@ public class ExtensionLoader<T> {
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type (" + type + ") is not an interface!");
         }
-        //接口上有没有SPI注解E
+        //接口上有没有SPI注解
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type (" + type +
                     ") is not an extension, because it is NOT annotated with @" + SPI.class.getSimpleName() + "!");
@@ -450,11 +452,12 @@ public class ExtensionLoader<T> {
         }
         //从实例缓存中直接拿扩展类实例，如果拿到了直接返回了；
         final Holder<Object> holder = getOrCreateHolder(name);
-        Object instance = holder.get();
+        Object instance = holder.get(); 
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    //创建实例
                     instance = createExtension(name, wrap);
                     holder.set(instance);
                 }
@@ -507,6 +510,7 @@ public class ExtensionLoader<T> {
     }
 
     public Set<String> getSupportedExtensions() {
+        //获取扩展类class
         Map<String, Class<?>> clazzes = getExtensionClasses();
         return Collections.unmodifiableSet(new TreeSet<>(clazzes.keySet()));
     }
@@ -668,28 +672,33 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name, boolean wrap) {
+        //通过名称获得类型
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null || unacceptableExceptions.contains(name)) {
             throw findException(name);
         }
         try {
+            //从缓存中拿类型
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
+                //通过反射获取类实例，并将实例放进类缓存当中
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.getDeclaredConstructor().newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            //针对实例进行注入
             injectExtension(instance);
 
-
+            //wrap一般默认为true
             if (wrap) {
 
                 List<Class<?>> wrapperClassesList = new ArrayList<>();
+                //获取包装类
                 if (cachedWrapperClasses != null) {
                     wrapperClassesList.addAll(cachedWrapperClasses);
                     wrapperClassesList.sort(WrapperComparator.COMPARATOR);
                     Collections.reverse(wrapperClassesList);
                 }
-
+                //遍历包装类，最后一个有效
                 if (CollectionUtils.isNotEmpty(wrapperClassesList)) {
                     for (Class<?> wrapperClass : wrapperClassesList) {
                         Wrapper wrapper = wrapperClass.getAnnotation(Wrapper.class);
@@ -700,7 +709,7 @@ public class ExtensionLoader<T> {
                     }
                 }
             }
-
+            //扩展类是否实现了lifeCycle接口，实现了的话，可以进行一些初始化的方法
             initExtension(instance);
             return instance;
         } catch (Throwable t) {
@@ -714,13 +723,15 @@ public class ExtensionLoader<T> {
     }
 
     private T injectExtension(T instance) {
-
+        //判断实例工厂是否为空
         if (objectFactory == null) {
             return instance;
         }
 
         try {
+            //遍历所有的方法，查找setter方法
             for (Method method : instance.getClass().getMethods()) {
+                //是否是以set开头的方法
                 if (!isSetter(method)) {
                     continue;
                 }
@@ -728,10 +739,11 @@ public class ExtensionLoader<T> {
                 /*
                  * Check {@link DisableInject} to see if we need autowire injection for this property
                  */
+                //判断是否带有忽略注解
                 if (method.getAnnotation(DisableInject.class) != null) {
                     continue;
                 }
-
+                //获取paramType类型，并判断是否是基本数据类型
                 Class<?> pt = method.getParameterTypes()[0];
                 if (ReflectUtils.isPrimitives(pt)) {
                     continue;
@@ -742,6 +754,7 @@ public class ExtensionLoader<T> {
                  * {@link Inject#enable} == false will skip inject property phase
                  * {@link Inject#InjectType#ByName} default inject by name
                  */
+                //获取方法入参名称
                 String property = getSetterProperty(method);
                 Inject inject = method.getAnnotation(Inject.class);
                 if (inject == null) {
@@ -764,10 +777,19 @@ public class ExtensionLoader<T> {
         return instance;
     }
 
+    /**
+     *
+     * @param instance 待注入的实例
+     * @param method setter方法
+     * @param pt setter方法的参数类型
+     * @param property setter方法的参数名称
+     */
     private void injectValue(T instance, Method method, Class<?> pt, String property) {
         try {
+            //获取入参实例，此时的objectFactory是AdaptiveExtensionFactory
             Object object = objectFactory.getExtension(pt, property);
             if (object != null) {
+                //调用方法进行set
                 method.invoke(instance, object);
             }
         } catch (Exception e) {
